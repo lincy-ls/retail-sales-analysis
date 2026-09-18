@@ -97,11 +97,11 @@ Retail Sales Analysis/
 
 Data Source
 
-The dataset used in this project is the Online Retail dataset from the UCI Machine Learning Repository.
+The dataset used in this project is the Online Retail II dataset from the UCI Machine Learning Repository.
 
 It contains transaction data from a UK-based online retail business, covering transactions from December 2010 to December 2011.
 
-Source: "UCI Machine Learning Repository — Online Retail" (https://archive.ics.uci.edu/dataset/352/online%2Bretail)
+Source: "UCI Machine Learning Repository — Online Retail II" (https://archive.ics.uci.edu/dataset/352/online%2Bretail)
 
 Dataset citation: Chen, D. (2015). Online Retail [Dataset]. UCI Machine Learning Repository. DOI: 10.24432/C5BW33.
 
