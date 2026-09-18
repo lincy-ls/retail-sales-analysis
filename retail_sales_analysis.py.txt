@@ -1,0 +1,351 @@
+# ============================================================
+# RETAIL SALES ANALYSIS
+# ============================================================
+
+# -------------------- 1. IMPORT LIBRARIES --------------------
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from scipy.stats import ttest_ind
+from scipy.stats import f_oneway
+from scipy.stats import chi2_contingency
+
+from sklearn.linear_model import LinearRegression
+
+
+# -------------------- 2. LOAD DATA --------------------------
+
+data = pd.read_excel("data/online retail.xlsx")
+
+print("\n--- FIRST 5 ROWS ---")
+print(data.head())
+
+print("\n--- DATA SHAPE ---")
+print(data.shape)
+
+print("\n--- DATA INFO ---")
+print(data.info())
+
+print("\n--- DATA TYPES ---")
+print(data.dtypes)
+
+print("\n--- COLUMNS ---")
+print(data.columns)
+
+print("\n--- DESCRIPTIVE STATISTICS ---")
+print(data.describe())
+
+
+# -------------------- 3. DATA QUALITY CHECK -----------------
+
+print("\n--- MISSING VALUES ---")
+print(data.isnull().sum())
+
+print("\n--- DUPLICATE ROWS ---")
+print(data.duplicated().sum())
+
+print("\n--- UNIQUE VALUES ---")
+print(data.nunique())
+
+print("\n--- NEGATIVE QUANTITIES ---")
+print((data["Quantity"] < 0).sum())
+
+print("\n--- ZERO QUANTITIES ---")
+print((data["Quantity"] == 0).sum())
+
+print("\n--- ZERO PRICES ---")
+print((data["Price"] == 0).sum())
+
+print("\n--- NEGATIVE PRICES ---")
+print((data["Price"] < 0).sum())
+
+
+# -------------------- 4. REVENUE CREATION -------------------
+
+data["Revenue"] = data["Quantity"] * data["Price"]
+
+print("\n--- REVENUE CALCULATION ---")
+print(data[["Quantity", "Price", "Revenue"]].head())
+
+
+# -------------------- 5. DESCRIPTIVE STATISTICS -------------
+
+print("\n--- REVENUE STATISTICS ---")
+
+print("Total Revenue:", data["Revenue"].sum())
+print("Average Revenue:", data["Revenue"].mean())
+print("Median Revenue:", data["Revenue"].median())
+print("Revenue Standard Deviation:", data["Revenue"].std())
+
+
+# -------------------- 6. POSITIVE SALES DATA ----------------
+
+sales = data[data["Revenue"] > 0].copy()
+
+
+# -------------------- 7. REVENUE DISTRIBUTION ---------------
+
+plt.figure(figsize=(8, 5))
+plt.hist(sales["Revenue"], bins=50)
+plt.xlabel("Revenue")
+plt.ylabel("Frequency")
+plt.title("Revenue Distribution")
+plt.show()
+
+print("\n--- REVENUE QUANTILES ---")
+print(sales["Revenue"].quantile(
+    [0.25, 0.50, 0.75, 0.95, 0.99]
+))
+
+
+# -------------------- 8. TOP PRODUCTS -----------------------
+
+top_products = (
+    sales.groupby("Description")["Revenue"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(10)
+)
+
+print("\n--- TOP 10 PRODUCTS BY REVENUE ---")
+print(top_products)
+
+top_products.sort_values().plot(
+    kind="barh",
+    figsize=(8, 5)
+)
+
+plt.xlabel("Revenue")
+plt.ylabel("Product")
+plt.title("Top 10 Products by Revenue")
+plt.show()
+
+
+# -------------------- 9. MONTHLY REVENUE --------------------
+
+sales["InvoiceDate"] = pd.to_datetime(sales["InvoiceDate"])
+
+sales["Month"] = sales["InvoiceDate"].dt.to_period("M")
+
+monthly_revenue = sales.groupby("Month")["Revenue"].sum()
+
+print("\n--- MONTHLY REVENUE ---")
+print(monthly_revenue)
+
+monthly_revenue.plot(figsize=(10, 5))
+
+plt.xlabel("Month")
+plt.ylabel("Revenue")
+plt.title("Monthly Revenue Trend")
+plt.xticks(rotation=45)
+plt.show()
+
+
+# -------------------- 10. COUNTRY ANALYSIS ------------------
+
+country_revenue = (
+    sales.groupby("Country")["Revenue"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(10)
+)
+
+print("\n--- TOP 10 COUNTRIES BY REVENUE ---")
+print(country_revenue)
+
+country_revenue.sort_values().plot(
+    kind="barh",
+    figsize=(8, 5)
+)
+
+plt.xlabel("Revenue")
+plt.ylabel("Country")
+plt.title("Top 10 Countries by Revenue")
+plt.show()
+
+
+# -------------------- 11. PRODUCT-LEVEL ANALYSIS ------------
+
+product_revenue = (
+    data.groupby("Description")["Revenue"]
+    .agg(
+        Total_Revenue="sum",
+        Average_Revenue="mean",
+        Maximum_Revenue="max",
+        Minimum_Revenue="min",
+        Number_of_Sales="count"
+    )
+)
+
+print("\n--- PRODUCT REVENUE SUMMARY ---")
+print(product_revenue.head())
+
+
+# Exclude non-product/adjustment entries
+
+exclude = [
+    "Discount",
+    "Manual",
+    "Bank Charges",
+    "AMAZON FEE",
+    "Adjust bad debt"
+]
+
+product_data = data[
+    ~data["Description"].isin(exclude)
+].copy()
+
+top_10_products = (
+    product_data.groupby("Description")["Revenue"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(10)
+)
+
+print("\n--- TOP 10 ACTUAL PRODUCTS ---")
+print(top_10_products)
+
+top_10_products.sort_values().plot(
+    kind="barh",
+    figsize=(10, 6)
+)
+
+plt.title("Top 10 Actual Products by Revenue")
+plt.xlabel("Revenue")
+plt.ylabel("Product")
+plt.show()
+
+
+# -------------------- 12. CUSTOMER REVENUE ------------------
+
+customer_revenue = (
+    data.groupby("Customer ID")["Revenue"]
+    .sum()
+    .sort_values(ascending=False)
+)
+
+print("\n--- TOP 10 CUSTOMERS BY REVENUE ---")
+print(customer_revenue.head(10))
+
+top_customers = customer_revenue.head(10)
+
+top_customers.sort_values().plot(
+    kind="barh",
+    figsize=(10, 6)
+)
+
+plt.title("Top 10 Customers by Revenue")
+plt.xlabel("Total Revenue")
+plt.ylabel("Customer ID")
+plt.show()
+
+
+# -------------------- 13. CUSTOMER PURCHASE FREQUENCY ------
+
+customer_frequency = (
+    data.groupby("Customer ID")
+    .size()
+    .sort_values(ascending=False)
+)
+
+print("\n--- TOP 10 CUSTOMERS BY TRANSACTIONS ---")
+print(customer_frequency.head(10))
+
+customer_frequency.head(10).sort_values().plot(
+    kind="barh",
+    figsize=(10, 6)
+)
+
+plt.title("Top 10 Customers by Number of Transactions")
+plt.xlabel("Number of Transactions")
+plt.ylabel("Customer ID")
+plt.show()
+
+
+# -------------------- 14. QUANTITY VS REVENUE --------------
+
+correlation = data[["Quantity", "Revenue"]].corr()
+
+print("\n--- QUANTITY VS REVENUE CORRELATION ---")
+print(correlation)
+
+
+# -------------------- 15. YEARLY REVENUE --------------------
+
+data["Year"] = data["InvoiceDate"].dt.year
+
+yearly_revenue = data.groupby("Year")["Revenue"].sum()
+
+print("\n--- YEARLY REVENUE ---")
+print(yearly_revenue)
+
+
+# -------------------- 16. WEEKDAY VS WEEKEND T-TEST --------
+
+data["Day"] = data["InvoiceDate"].dt.dayofweek
+
+weekday_revenue = data[
+    data["Day"] < 5
+]["Revenue"]
+
+weekend_revenue = data[
+    data["Day"] >= 5
+]["Revenue"]
+
+t_stat, p_value = ttest_ind(
+    weekday_revenue,
+    weekend_revenue,
+    equal_var=False
+)
+
+print("\n--- INDEPENDENT SAMPLE T-TEST ---")
+print("T-statistic:", t_stat)
+print("P-value:", p_value)
+
+
+# -------------------- 17. ANOVA BY COUNTRY ------------------
+
+country_groups = [
+    group["Revenue"].values
+    for _, group in data.groupby("Country")
+]
+
+f_stat, p_value = f_oneway(*country_groups)
+
+print("\n--- ANOVA ---")
+print("F-statistic:", f_stat)
+print("P-value:", p_value)
+
+
+# -------------------- 18. CHI-SQUARE TEST ------------------
+
+table = pd.crosstab(
+    data["Country"],
+    data["Year"]
+)
+
+chi2, p_value, dof, expected = chi2_contingency(table)
+
+print("\n--- CHI-SQUARE TEST ---")
+print("Chi-square statistic:", chi2)
+print("P-value:", p_value)
+print("Degrees of freedom:", dof)
+
+
+# -------------------- 19. LINEAR REGRESSION -----------------
+
+X = data[["Quantity"]]
+y = data["Revenue"]
+
+model = LinearRegression()
+
+model.fit(X, y)
+
+print("\n--- LINEAR REGRESSION ---")
+print("Coefficient:", model.coef_[0])
+print("Intercept:", model.intercept_)
+print("R-squared:", model.score(X, y))
+
+
+# -------------------- END OF ANALYSIS -----------------------
